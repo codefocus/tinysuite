@@ -56,7 +56,7 @@ class WormArray implements ArrayAccess, Countable
     public function add($item) {
         //  Append an item to the memory stream.
         $this->seekToEnd();
-        fwrite($this->memoryStream, pack('Q', $item));
+        fwrite($this->memoryStream, $this->formatItem($item));
         $this->numItems++;
     }
 
@@ -70,15 +70,19 @@ class WormArray implements ArrayAccess, Countable
      * @return void
      */
     public function addAtCurrentPosition($item) {
-        fwrite($this->memoryStream, pack($this->packFormat, $item));
+        fwrite($this->memoryStream, $this->formatItem($item));
         $this->numItems++;
     }
 
     /**
      * Format an item
+     *
+     * @param int $item
+     *
+     * @return int
      */
-    protected function formatItem() {
-
+    protected function formatItem($item) {
+        return pack($this->packFormat, $item);
     }
 
     /**
@@ -148,7 +152,7 @@ class WormArray implements ArrayAccess, Countable
             throw new Exception('Invalid offset: ' . $offset);
         }
         $this->seekToOffset($offset);
-        fwrite($this->memoryStream, pack($this->packFormat, $item));
+        fwrite($this->memoryStream, $this->formatItem($item));
     }
 
     /**
