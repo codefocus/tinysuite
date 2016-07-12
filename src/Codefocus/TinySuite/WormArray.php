@@ -1,6 +1,6 @@
 <?php
 
-namespace Codefocus\Vernacular;
+namespace Codefocus\TinySuite;
 
 use ArrayAccess;
 use Exception;
