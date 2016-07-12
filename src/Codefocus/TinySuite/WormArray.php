@@ -39,7 +39,7 @@ class WormArray implements ArrayAccess, Countable
         case self::ITEM_TYPE_UINT64:
             $this->packFormat = 'Q';
             break;
-        case default:
+        default:
             throw new Exception('Invalid item type specified.');
         }
 
