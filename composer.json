@@ -1,0 +1,40 @@
+{
+    "name": "codefocus/tinysuite",
+    "description": "A suite of tiny data structures for PHP.",
+	"version": "0.1.0",
+	"type": "library",
+	"keywords": ["php", "array", "collection", "lightweight", "memory", "small", "footprint", "fast", "quick"],
+	"homepage": "http://www.codefocus.ca",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Menno van Ens",
+            "homepage": "http://www.codefocus.ca",
+            "email": "info@codefocus.ca",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "email": "info@codefocus.ca",
+        "issues": "https://github.com/codefocus/tinysuite/issues",
+        "source": "https://github.com/codefocus/tinysuite"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "require": {
+        "php": ">=5.4.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "~4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Codefocus\\TinySuite\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-0": {
+            "": "src/"
+        }
+    }
+}
