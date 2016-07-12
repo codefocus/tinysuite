@@ -7,28 +7,41 @@ use Exception;
 use Countable;
 
 /**
- * Lightweight, blazing fast Array replacement
- * for storing unsigned 64-bit integers.
+ * Memory-efficient Array replacement for storing
+ * unsigned 8, 16, 32 or 64 bit integers.
  */
 class WormArray implements ArrayAccess, Countable
 {
-    const BYTES_UNSIGNED_LONG = 8;
-
-    const ITEM_TYPE_UINT8  =  8;
-    const ITEM_TYPE_UINT16 = 16;
-    const ITEM_TYPE_UINT32 = 32;
-    const ITEM_TYPE_UINT64 = 64;
+    const ITEM_TYPE_UINT8  = 1;
+    const ITEM_TYPE_UINT16 = 2;
+    const ITEM_TYPE_UINT32 = 4;
+    const ITEM_TYPE_UINT64 = 8;
 
     protected $memoryStream;
     protected $numItems = 0;
     protected $itemType;
+    protected $packFormat;
 
     public function __construct($itemType)
     {
-
-        //  @TODO:  Validate $itemType
+        //  Validate item type
         $this->itemType = $itemType;
-
+        switch($this->itemType) {
+        case self::ITEM_TYPE_UINT8:
+            $this->packFormat = 'C';
+            break;
+        case self::ITEM_TYPE_UINT16:
+            $this->packFormat = 'S';
+            break;
+        case self::ITEM_TYPE_UINT32:
+            $this->packFormat = 'L';
+            break;
+        case self::ITEM_TYPE_UINT64:
+            $this->packFormat = 'Q';
+            break;
+        case default:
+            throw new Exception('Invalid item type specified.');
+        }
 
         $this->memoryStream = fopen('php://memory', 'br+');
     }
@@ -41,7 +54,7 @@ class WormArray implements ArrayAccess, Countable
      * @return void
      */
     public function add($item) {
-        //  Append an 8 byte unsigned long to the memory stream.
+        //  Append an item to the memory stream.
         $this->seekToEnd();
         fwrite($this->memoryStream, pack('Q', $item));
         $this->numItems++;
@@ -57,8 +70,15 @@ class WormArray implements ArrayAccess, Countable
      * @return void
      */
     public function addAtCurrentPosition($item) {
-        fwrite($this->memoryStream, pack('Q', $item));
+        fwrite($this->memoryStream, pack($this->packFormat, $item));
         $this->numItems++;
+    }
+
+    /**
+     * Format an item
+     */
+    protected function formatItem() {
+
     }
 
     /**
@@ -67,7 +87,7 @@ class WormArray implements ArrayAccess, Countable
      * @return void
      */
     protected function seekToEnd() {
-        fseek($this->memoryStream, $this->numItems * self::BYTES_UNSIGNED_LONG);
+        fseek($this->memoryStream, $this->numItems * $this->itemType);
     }
 
     /**
@@ -78,7 +98,7 @@ class WormArray implements ArrayAccess, Countable
      * @return void
      */
     protected function seekToOffset($offset) {
-        fseek($this->memoryStream, $offset * self::BYTES_UNSIGNED_LONG);
+        fseek($this->memoryStream, $offset * $this->itemType);
     }
 
     /**
@@ -108,7 +128,7 @@ class WormArray implements ArrayAccess, Countable
             throw new Exception('Invalid offset: ' . $offset);
         }
         $this->seekToOffset($offset);
-        list(,$return) = unpack('Q', fread($this->memoryStream, self::BYTES_UNSIGNED_LONG));
+        list(,$return) = unpack($this->packFormat, fread($this->memoryStream, $this->itemType));
         return $return;
     }
 
@@ -128,7 +148,7 @@ class WormArray implements ArrayAccess, Countable
             throw new Exception('Invalid offset: ' . $offset);
         }
         $this->seekToOffset($offset);
-        fwrite($this->memoryStream, pack('Q', $item));
+        fwrite($this->memoryStream, pack($this->packFormat, $item));
     }
 
     /**

@@ -12,3 +12,5 @@ app/storage/
 
 .tags
 .DS_Store
+
+composer.lock
