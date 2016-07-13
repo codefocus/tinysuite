@@ -8,11 +8,13 @@ class HashTableTest extends TestCase
 {
     public function testAppend()
     {
-        $hashTable = new HashTable(HashTable::ITEM_TYPE_UINT16);
+        $hashTable = new HashTable(HashTable::ITEM_TYPE_UINT32);
+
+        $hashTable->dumpAsHex();
 
         $hashTable["test"] = 49;
 
-        $hashTable->dumpAsHex();
+
 
         // //  Test that the count is accurate.
         // $this->assertEquals(3, count($wormArray));

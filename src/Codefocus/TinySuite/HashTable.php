@@ -53,6 +53,26 @@ class HashTable extends AbstractArray implements ArrayAccess, Countable
         $this->numItems++;
     }
 
+    protected function writeUINT8($value) {
+        $this->memoryStreamSize += 1;
+        fwrite($this->memoryStream, pack('C', $value));
+    }
+
+    protected function writeUINT16($value) {
+        $this->memoryStreamSize += 2;
+        fwrite($this->memoryStream, pack('I', $value));
+    }
+
+    protected function writeUINT32($value) {
+        $this->memoryStreamSize += 4;
+        fwrite($this->memoryStream, pack('L', $value));
+    }
+
+    protected function writeUINT64($value) {
+        $this->memoryStreamSize += 8;
+        fwrite($this->memoryStream, pack('Q', $value));
+    }
+
     protected function initializeLookupTable($byteOffset) {
         fseek($this->memoryStream, $byteOffset);
         //  Mark this address as a lookup table.
@@ -65,6 +85,21 @@ class HashTable extends AbstractArray implements ArrayAccess, Countable
             fwrite($this->memoryStream, pack('C', 0));
             fwrite($this->memoryStream, pack('L', 0));
         }
+
+        // //  @TODO @DEBUG @REMOVEME
+        // fseek($this->memoryStream, 1);
+        // fwrite($this->memoryStream, pack('C', ord('t')));
+        // fwrite($this->memoryStream, pack('L', 6));
+        //
+        // fwrite($this->memoryStream, pack('C', self::MARKER_LOOKUP_TABLE | self::MARKER_SIZE_16));
+        // fwrite($this->memoryStream, pack('C', ord('e')));
+        // fwrite($this->memoryStream, pack('L', 12));
+        //
+        // fwrite($this->memoryStream, pack('C', self::MARKER_VALUE | self::MARKER_SIZE_4));
+        // fwrite($this->memoryStream, pack('L', 1234));
+        // fwrite($this->memoryStream, pack('C', self::MARKER_VALUE | self::MARKER_SIZE_4));
+        // fwrite($this->memoryStream, pack('L', 5678));
+
     }
 
 
@@ -92,8 +127,7 @@ class HashTable extends AbstractArray implements ArrayAccess, Countable
      * @return void
      */
     protected function seekToEnd() {
-        throw new Exception('@TODO');
-        fseek($this->memoryStream, $this->numItems * $this->itemType);
+        fseek($this->memoryStream, $this->memoryStreamSize);
     }
 
     /**
@@ -163,61 +197,62 @@ class HashTable extends AbstractArray implements ArrayAccess, Countable
      *
      * @return int
      */
-    protected function getCursorForKey($offset) {
-        $cursor = 0;
+    protected function getCursorForKey($offset, $cursor = 0) {
         $offsetLength = strlen($offset);
-
-
         for ($iChar = 0; $iChar < $offsetLength; ++$iChar) {
-            $tableCursor = $cursor;
-            $this->seekToCursor($tableCursor);
+            $char = ord($offset[$iChar]);
+            $this->seekToCursor($cursor);
             //  Verify that this is a lookup table
-            $marker = ord(fread($this->memoryStream, 1));//pack('C', fread($this->memoryStream, 1));
+            $marker = ord(fread($this->memoryStream, 1));
             if ($this->isValue($marker)) {
-                //  Found our value.
-                echo PHP_EOL . 'VALUE FOUND AT:' . $tableCursor;
-                return $tableCursor;
+                //  Found our key.
+                //  Return the address of its value.
+                return $cursor + 1;
             }
             if (!$this->isLookupTable($marker)) {
-                throw new Exception('Data corruption at address ' . $tableCursor);
+                throw new Exception('Data corrupted at address ' . $cursor);
             }
-            //  Read the lookup table.
-            //  [ [char][addr] ] * {marker.length}
+            //  Find this character in the lookup table at the cursor.
             $lookupTableSize = $this->getSize($marker);
-            $lookupTable = fread($this->memoryStream, $lookupTableSize * 5);
-
-            for ($iLookupTableEntry = 0; $iLookupTableEntry < $lookupTableSize; ++$iLookupTableEntry) {
-                if (0 === ord($lookupTable[ $iLookupTableEntry * 5 ])) {
-                    //  null byte found, indicating end of lookup table.
-                    echo PHP_EOL . 'NOTHING FOUND. LOOKUP TABLE ENDS AT ' . $tableCursor;
-                    return false;
-                }
+            $nextCursor = $this->lookupAddressForChar($char, $lookupTableSize);
+            if (false === $nextCursor) {
+                //  Character not found.
+                //  This key is not in our hash table.
+                return false;
             }
-
-
-
-            print_r('--'.strlen($lookupTable).'--');
-
-
-            // for ($iKeyChar = 0; $iKeyChar < $lookupTableSize; ++$iKeyChar) {
-            //     //  Initialize this position with an empty character,
-            //     //  followed by an empty 4-byte address.
-            //     fwrite($this->memoryStream, pack('C', 0));
-            //     fwrite($this->memoryStream, pack('L', 0));
-            // }
-
-
-
-            echo PHP_EOL . 'marker:' . dechex($marker);
-
-
-            //  Read the lookup table length
-
-
-            //$cursor
+            else {
+                //  Move the cursor to the address we found in the lookup table.
+                $cursor = $nextCursor;
+            }
         }
 
+        return false;
+    }
 
+    /**
+     * Return the address value stored for the specified char
+     * in the lookup table at the current active stream cursor.
+     * Returns false if not found.
+     *
+     * @param char $char
+     * @param int $lookupTableSize
+     *
+     * @return int|false
+     */
+    protected function lookupAddressForChar($char, $lookupTableSize) {
+
+        for ($iLookupTableEntry = 0; $iLookupTableEntry < $lookupTableSize; ++$iLookupTableEntry) {
+            $cursor = $iLookupTableEntry * 5;
+            $lookupTableEntry = unpack('Cchar/Iaddress', fread($this->memoryStream, 5));
+            if (0 === $lookupTableEntry['char']) {
+                //  null byte found, indicating end of lookup table.
+                return false;
+            }
+            if ($lookupTableEntry['char'] === $char) {
+                return $lookupTableEntry['address'];
+            }
+        }
+        return false;
     }
 
 
@@ -231,9 +266,21 @@ class HashTable extends AbstractArray implements ArrayAccess, Countable
      */
     public function offsetSet($offset, $item) {
 
-        echo PHP_EOL . 'Offset: ' . $offset;
+        echo PHP_EOL . 'Offset: ' . $offset . PHP_EOL;
 
-        $byteOffset = $this->getCursorForKey($offset);
+        $cursor = $this->getCursorForKey($offset);
+        if (false === $cursor) {
+            //  Create key.
+
+            $this->seekToEnd();
+            
+            $streamMetaData = stream_get_meta_data($this->memoryStream);
+            var_dump($streamMetaData);
+            throw new Exception('@TODO: Create key');
+        }
+        fseek($this->memoryStream, $cursor);
+        //fwrite($this->memoryStream, pack('C', self::MARKER_VALUE | self::MARKER_SIZE_4));
+        fwrite($this->memoryStream, pack('L', $item));
         //  1.  Traverse the lookup table(s) to see if this key exists.
 
 

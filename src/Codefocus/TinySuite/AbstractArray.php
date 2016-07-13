@@ -14,6 +14,7 @@ abstract class AbstractArray implements ArrayAccess, Countable
     const ITEM_TYPE_UINT64 = 8;
 
     protected $memoryStream;
+    protected $memoryStreamSize;
     protected $numItems = 0;
     protected $itemType;
     protected $packFormat;
