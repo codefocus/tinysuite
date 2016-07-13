@@ -10,56 +10,8 @@ use Countable;
  * Memory-efficient Array replacement for storing
  * unsigned 8, 16, 32 or 64 bit integers.
  */
-class WormArray implements ArrayAccess, Countable
+class WormArray extends AbstractArray implements ArrayAccess, Countable
 {
-    const ITEM_TYPE_UINT8  = 1;
-    const ITEM_TYPE_UINT16 = 2;
-    const ITEM_TYPE_UINT32 = 4;
-    const ITEM_TYPE_UINT64 = 8;
-
-    protected $memoryStream;
-    protected $numItems = 0;
-    protected $itemType;
-    protected $packFormat;
-
-    public function __construct($itemType)
-    {
-        //  Validate item type
-        $this->itemType = $itemType;
-        switch($this->itemType) {
-        case self::ITEM_TYPE_UINT8:
-            $this->packFormat = 'C';
-            break;
-        case self::ITEM_TYPE_UINT16:
-            $this->packFormat = 'S';
-            break;
-        case self::ITEM_TYPE_UINT32:
-            $this->packFormat = 'L';
-            break;
-        case self::ITEM_TYPE_UINT64:
-            $this->packFormat = 'Q';
-            break;
-        default:
-            throw new Exception('Invalid item type specified.');
-        }
-
-        $this->memoryStream = fopen('php://memory', 'br+');
-    }
-
-    /**
-     * Append an item to the array.
-     *
-     * @param int $item
-     *
-     * @return void
-     */
-    public function add($item) {
-        //  Append an item to the memory stream.
-        $this->seekToEnd();
-        fwrite($this->memoryStream, $this->formatItem($item));
-        $this->numItems++;
-    }
-
     /**
      * Add an item to the array, at the current position.
      * Similar to add(), but without the overhead of seeking
@@ -72,17 +24,6 @@ class WormArray implements ArrayAccess, Countable
     public function addAtCurrentPosition($item) {
         fwrite($this->memoryStream, $this->formatItem($item));
         $this->numItems++;
-    }
-
-    /**
-     * Format an item
-     *
-     * @param int $item
-     *
-     * @return int
-     */
-    protected function formatItem($item) {
-        return pack($this->packFormat, $item);
     }
 
     /**
@@ -103,6 +44,20 @@ class WormArray implements ArrayAccess, Countable
      */
     protected function seekToOffset($offset) {
         fseek($this->memoryStream, $offset * $this->itemType);
+    }
+
+    /**
+     * Append an item to the array.
+     *
+     * @param int $item
+     *
+     * @return void
+     */
+    public function add($item) {
+        //  Append an item to the memory stream.
+        $this->seekToEnd();
+        fwrite($this->memoryStream, $this->formatItem($item));
+        $this->numItems++;
     }
 
     /**
@@ -165,15 +120,6 @@ class WormArray implements ArrayAccess, Countable
      */
     public function offsetUnset($offset) {
         throw new Exception('unset() is unsupported in WormArray');
-    }
-
-    /**
-     * Return the number of items in the array.
-     *
-     * @return int
-     */
-    public function count() {
-        return $this->numItems;
     }
 
 }    //	class WormArray
